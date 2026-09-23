@@ -1,0 +1,642 @@
+{
+ "name": "Studio CAI – Deleghe: conferma e registrazione",
+ "flow": [
+  {
+   "id": 1,
+   "module": "gateway:CustomWebHook",
+   "version": 1,
+   "parameters": {
+    "hook": 3768761,
+    "maxResults": 1
+   },
+   "mapper": {},
+   "metadata": {
+    "designer": {
+     "x": 0,
+     "y": 0
+    }
+   }
+  },
+  {
+   "id": 2,
+   "module": "datastore:GetRecord",
+   "version": 1,
+   "parameters": {
+    "datastore": 195160
+   },
+   "mapper": {
+    "key": "{{ifempty(1.requestId; \"-\")}}"
+   },
+   "metadata": {
+    "designer": {
+     "x": 300,
+     "y": 0
+    }
+   }
+  },
+  {
+   "id": 3,
+   "module": "builtin:BasicRouter",
+   "version": 1,
+   "mapper": null,
+   "metadata": {
+    "designer": {
+     "x": 600,
+     "y": 0
+    }
+   },
+   "routes": [
+    {
+     "flow": [
+      {
+       "id": 4,
+       "module": "airtable:makeApiCall",
+       "version": 3,
+       "parameters": {
+        "__IMTCONN__": 5329588
+       },
+       "filter": {
+        "name": "Codice corretto",
+        "conditions": [
+         [
+          {
+           "a": "{{2.codice}}",
+           "o": "text:equal",
+           "b": "{{trim(1.codice)}}"
+          },
+          {
+           "a": "{{2.email}}",
+           "o": "text:equal",
+           "b": "{{lower(trim(1.email))}}"
+          },
+          {
+           "a": "{{2.scadenza}}",
+           "o": "number:greater",
+           "b": "{{timestamp}}"
+          },
+          {
+           "a": "{{ifempty(2.tentativi; 0)}}",
+           "o": "number:less",
+           "b": "5"
+          }
+         ]
+        ]
+       },
+       "mapper": {
+        "url": "v0/appit0KcdaUdu5WE6/tblKbZ0FRbjCUCnuH",
+        "method": "GET",
+        "qs": [
+         {
+          "key": "pageSize",
+          "value": "100"
+         },
+         {
+          "key": "fields[]",
+          "value": "Condominio"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 900,
+         "y": -200
+        }
+       }
+      },
+      {
+       "id": 5,
+       "module": "google-sheets:makeAPICall",
+       "version": 2,
+       "parameters": {
+        "__IMTCONN__": 30315
+       },
+       "mapper": {
+        "url": "spreadsheets/1Hm-Q38xDvBYLDlcCgIHghQ4d7eTGITqeKTXK4OaJBPw/values/Foglio1!A:Z",
+        "method": "GET",
+        "qs": [
+         {
+          "key": "valueRenderOption",
+          "value": "FORMATTED_VALUE"
+         }
+        ],
+        "headers": []
+       },
+       "metadata": {
+        "designer": {
+         "x": 1200,
+         "y": -200
+        }
+       }
+      },
+      {
+       "id": 6,
+       "module": "airtable:makeApiCall",
+       "version": 3,
+       "parameters": {
+        "__IMTCONN__": 5329588
+       },
+       "mapper": {
+        "url": "v0/app1UcdFfbIWT7f8T/tblNs0GJ94owfQpEa",
+        "method": "GET",
+        "qs": [
+         {
+          "key": "pageSize",
+          "value": "100"
+         },
+         {
+          "key": "filterByFormula",
+          "value": "OR(LOWER({EMAIL})='{{replace(lower(trim(1.email)); \"'\"; \"\")}}', IS_SAME({DATA ASSEMBLEA}, DATETIME_PARSE('{{1.dataAssemblea}}', 'YYYY-MM-DD'), 'day'))"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 1500,
+         "y": -200
+        }
+       }
+      },
+      {
+       "id": 7,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{4.body.records}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 1800,
+         "y": -200
+        }
+       }
+      },
+      {
+       "id": 8,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{5.body}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 2100,
+         "y": -200
+        }
+       }
+      },
+      {
+       "id": 9,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{6.body.records}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 2400,
+         "y": -200
+        }
+       }
+      },
+      {
+       "id": 10,
+       "module": "code:ExecuteCode",
+       "version": 0,
+       "parameters": {},
+       "metadata": {
+        "designer": {
+         "x": 2700,
+         "y": -200
+        }
+       },
+       "mapper": {
+        "language": "javascript",
+        "inputFormat": "editor",
+        "codeEditorJavascript": "// ── Deleghe assemblea: controlli automatici e preparazione della registrazione ──\n// Input: elenco (condomini Airtable), segnalazioni (Google Sheet webapp Segnalazioni),\n// deleghe (Airtable: stessa email o stessa data assemblea), dati del modulo.\n\nconst IN = (typeof input !== \"undefined\") ? input : {};\nconst leggiJson = (v, d) => { try { return typeof v === \"string\" ? JSON.parse(v) : (v || d); } catch (e) { return d; } };\nconst txt = (v) => String(v == null ? \"\" : v).trim();\n\n// ── Abbinamento condominio → elenco (stesso motore di \"Interventi: abbinamento condominio all'elenco\") ──\nconst base = (s) => String(s || \"\").toLowerCase().normalize(\"NFD\").replace(/[̀-ͯ]/g, \"\")\n  .replace(/\\bs\\.?\\s*m\\.?\\s+/g, \"sm \")\n  .replace(/\\bs(an)?ta?\\.?\\s*maria\\b/g, \"sm\")\n  .replace(/\\bcirc\\.?(onvallazion)?e?\\b|\\bcic\\.?ne\\b|\\bcirc\\.ne\\b/g, \" \")\n  .replace(/([a-z])(\\d)/g, \"$1 $2\").replace(/(\\d)([a-z])/g, \"$1 $2\")\n  .replace(/[^a-z0-9]+/g, \" \").trim();\nconst STOP = new Set((\"via viale vle v piazza piazzale pza p pzza largo lgo vicolo corso circonvallazione ne cne \" +\n  \"condominio cond civico civ n nr num numero int interno scala sc italia lotto palazzina pal isolato \" +\n  \"e ed a al alla i de di del della da dal padre san santa santo m\").split(\" \"));\nconst parole = (s) => base(s).split(\" \").filter((w) => w && !/^\\d/.test(w) && !STOP.has(w) && w.length >= 3);\nconst numeri = (s) => {\n  const out = new Set();\n  (base(s).match(/\\d{1,4}/g) || []).map(Number).forEach((n) => out.add(n));\n  (String(s || \"\").match(/(\\d{1,4})\\s*[-–\\/]\\s*(\\d{1,4})/g) || []).forEach((r) => {\n    const [a, b] = r.split(/[-–\\/]/).map((x) => Number(x.trim()));\n    if (b > a && b - a <= 30) for (let i = a; i <= b; i++) out.add(i);\n  });\n  return out;\n};\nconst lev = (a, b) => {\n  if (Math.abs(a.length - b.length) > 2) return 9;\n  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);\n  for (let j = 1; j <= b.length; j++) d[0][j] = j;\n  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)\n    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));\n  return d[a.length][b.length];\n};\nconst simili = (a, b) => {\n  if (a === b) return 2;\n  if (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))) return 1;\n  const L = Math.min(a.length, b.length);\n  if (L >= 5 && lev(a, b) <= 1) return 1;\n  if (L >= 8 && lev(a, b) <= 2) return 1;\n  return 0;\n};\nconst REGOLE = [\n  [/oppido/, \"Appia Archeologica I\"],\n  [/crisopoli/, \"Begonie\"],\n  [/peperino/, \"Dalie\"],\n  [/anicio|paolino|palino/, \"Tor Fiscale\"],\n  [/\\ba?c?qui\\b|\\bacqui\\b/, \"Acqui 11\"],\n  [/san ?remo 1 3\\b/, \"San Remo 1-3\"],\n  [/san ?remo/, \"San Remo 1\"],\n  [/monte ?grimano|comparto ed|comparto edificio/, \"Comparto Z1B Edificio 1\"],\n  [/genzano|appia nuova 555/, \"Appia Nuova 555 - Genzano 12\"],\n  [/bragadin|cipro/, \"Cipro 47-53 - M.Bragadin 50\"],\n  [/nomentum/, \"Nomentum 49-61\"],\n  [/(ugo )?da como/, \"Da Como 1-2-3\"],\n  [/magna ?grecia/, \"Magna Grecia 20-26\"],\n  [/fidene/, \"Fidene 19\"],\n  [/piagge supercondomin/, \"Comparto R1 - Piagge 92-94\"],\n  [/piagge (7[5-9]|8[0-9])\\b/, \"Piagge 75-89\"],\n  [/piagge 9[24]\\b/, (sc, t) => {\n    if (/\\bd ?e\\b|\\b92 d\\b/.test(t)) return \"Piagge92 DE\";\n    if (/\\bf ?g ?h\\b/.test(t)) return \"Piagge92 FGH\";\n    const s = base(sc).replace(/^scala /, \"\");\n    if (/^[de]\\b/.test(s)) return \"Piagge92 DE\";\n    if (/^[fgh]\\b/.test(s)) return \"Piagge92 FGH\";\n    return \"Comparto R1 - Piagge 92-94\";\n  }],\n];\nfunction abbina(testo, scala, elenco) {\n  const t = base(testo);\n  if (!t) return \"\";\n  const esiste = (n) => elenco.find((e) => e === n);\n  for (const [re, dest] of REGOLE) {\n    if (re.test(t)) {\n      const n = typeof dest === \"function\" ? dest(scala, t) : dest;\n      if (esiste(n)) return n;\n    }\n  }\n  const P = parole(testo), N = numeri(testo);\n  if (!P.length) return \"\";\n  const cand = elenco.map((e) => {\n    const pe = parole(e), ne = numeri(e);\n    let sp = 0;\n    P.forEach((x) => { let m = 0; pe.forEach((y) => { m = Math.max(m, simili(x, y)); }); sp += m; });\n    if (!sp) return null;\n    let sn = 0;\n    if (N.size && ne.size) { for (const n of N) if (ne.has(n)) sn++; if (!sn) return null; }\n    const esatto = N.size && ne.size && N.size === ne.size && [...N].every((n) => ne.has(n)) ? 1 : 0;\n    return { e, punti: sp * 10 + sn * 3 + esatto * 2 - (N.size ? 0 : ne.size ? 1 : 0) };\n  }).filter(Boolean).sort((a, b) => b.punti - a.punti);\n  if (!cand.length) return \"\";\n  if (cand.length > 1 && cand[0].punti === cand[1].punti) return \"\";\n  return cand[0].e;\n}\n\n// ── Dati del modulo ──\nconst d = {\n  codice: txt(IN.codiceDelega),\n  condominio: txt(IN.condominio),\n  data: txt(IN.dataAssemblea),            // YYYY-MM-DD\n  unita: txt(IN.unita),\n  nome: txt(IN.nome), cognome: txt(IN.cognome),\n  cf: txt(IN.cf).toUpperCase(),\n  qualita: txt(IN.qualita),\n  email: txt(IN.email).toLowerCase(),\n  delegato: txt(IN.delegato),\n  emailDelegato: txt(IN.emailDelegato).toLowerCase(),\n  istruzioni: txt(IN.istruzioni),\n  ip: txt(IN.ip), dispositivo: txt(IN.dispositivo).slice(0, 250),\n  versione: txt(IN.versione),\n  quando: txt(IN.timestamp) || new Date().toISOString(),\n};\nconst delegante = `${d.nome} ${d.cognome}`.trim();\n\nconst elenco = leggiJson(IN.elenco, []).map((r) => txt((r.fields || {}).Condominio)).filter(Boolean);\nconst nomeCondominio = elenco.length ? abbina(d.condominio, d.unita, elenco) : \"\";\nconst condominio = nomeCondominio || d.condominio;\n\n// ── Verifica recapito: email già nota allo studio? ──\nconst norm = (s) => base(s).replace(/\\s+/g, \"\");\nconst deleghe = leggiJson(IN.deleghe, []);\nconst precedentiStessaEmail = deleghe.filter((r) => txt((r.fields || {}).EMAIL).toLowerCase() === d.email);\n\nlet inSegnalazioni = false;\nconst foglio = leggiJson(IN.segnalazioni, {});\nconst righe = Array.isArray(foglio.values) ? foglio.values : [];\nif (righe.length && d.email) {\n  const intest = (righe[0] || []).map((h) => String(h || \"\").toLowerCase());\n  let col = intest.findIndex((h) => /mail/.test(h));\n  const cerca = (r) => col >= 0\n    ? String(r[col] || \"\").trim().toLowerCase() === d.email\n    : r.some((c) => String(c || \"\").trim().toLowerCase() === d.email);\n  inSegnalazioni = righe.slice(1).some(cerca);\n}\nconst motivi = [];\nif (precedentiStessaEmail.length) motivi.push(\"deleghe precedenti\");\nif (inSegnalazioni) motivi.push(\"segnalazioni allo studio\");\nconst verifica = motivi.length ? \"🟢 RICONOSCIUTA\" : \"🟡 NUOVO RECAPITO\";\n\n// ── Stessa assemblea: sostituzioni e deleghe allo stesso delegato ──\nconst stessaAssemblea = deleghe.filter((r) => {\n  const f = r.fields || {};\n  return txt(f.STATO) === \"VALIDA\" && txt(f[\"DATA ASSEMBLEA\"]) === d.data && norm(f.CONDOMINIO) === norm(condominio);\n});\nconst unitaN = norm(d.unita);\nconst daSostituire = stessaAssemblea.filter((r) => {\n  const f = r.fields || {};\n  return norm(f[\"UNITÀ\"]) === unitaN || (d.cf && txt(f[\"CODICE FISCALE\"]).toUpperCase() === d.cf && norm(f[\"UNITÀ\"]) === unitaN);\n});\nconst idSost = new Set(daSostituire.map((r) => r.id));\nconst stessoDelegato = stessaAssemblea.filter((r) => !idSost.has(r.id) && norm((r.fields || {}).DELEGATO) === norm(d.delegato));\n\nconst avvisi = [];\nif (!nomeCondominio) avvisi.push(`Condominio \"${d.condominio}\" non trovato nell'elenco: correggere il campo CONDOMINIO.`);\nif (daSostituire.length) avvisi.push(`Sostituisce la delega ${daSostituire.map((r) => txt((r.fields || {}).CODICE)).join(\", \")} della stessa unità.`);\nif (stessoDelegato.length >= 2) avvisi.push(`${d.delegato} ha ${stessoDelegato.length + 1} deleghe per questa assemblea: verificare il limite dell'art. 67 disp. att. c.c. (oltre 20 condòmini, max 1/5 dei condòmini e del valore).`);\nif (/cicerchia|studio ?cai|amministrator/i.test(d.delegato)) avvisi.push(\"Il delegato sembra essere l'amministratore: delega non ammessa (art. 67 disp. att. c.c.).\");\n\n// ── Token di revoca ──\nconst alfabeto = \"ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789\";\nlet token = \"\";\nfor (let i = 0; i < 24; i++) token += alfabeto[Math.floor(Math.random() * alfabeto.length)];\n\n// ── Registrazione Airtable ──\nconst record = {\n  typecast: true,\n  records: [{ fields: {\n    \"CODICE\": d.codice, \"STATO\": \"VALIDA\", \"VERIFICA\": verifica,\n    \"CONDOMINIO\": condominio, \"CONDOMINIO SEGNALATO\": d.condominio,\n    \"DATA ASSEMBLEA\": d.data, \"UNITÀ\": d.unita, \"DELEGANTE\": delegante,\n    \"CODICE FISCALE\": d.cf, \"QUALITÀ\": d.qualita, \"EMAIL\": d.email,\n    \"DELEGATO\": d.delegato, \"EMAIL DELEGATO\": d.emailDelegato || null,\n    \"ISTRUZIONI DI VOTO\": d.istruzioni, \"AVVISI\": avvisi.join(\"\\n\"),\n    \"DATA E ORA\": d.quando, \"IP\": d.ip, \"DISPOSITIVO\": d.dispositivo,\n    \"PDF\": \"\", \"TOKEN REVOCA\": token, \"VERSIONE APP\": d.versione,\n  } }],\n};\nconst sostituzione = JSON.stringify({ typecast: true, records: daSostituire.slice(0, 10).map((r) => ({ id: r.id, fields: { \"STATO\": \"SOSTITUITA\" } })) });\n\n// ── Cartella e file su Dropbox ──\nconst pulito = (s) => String(s || \"\").replace(/[\\\\/:*?\"<>|]+/g, \"-\").replace(/\\s+/g, \" \").trim();\nconst cartella = `/STUDIO CAI/Deleghe Assemblee/${pulito(condominio)}/${d.data}`;\nconst nomeFile = `${d.codice} - ${pulito(delegante)}.pdf`;\nrecord.records[0].fields[\"PDF\"] = `${cartella}/${nomeFile}`;\n\n// ── Email di ricevuta ──\nconst esc = (s) => String(s || \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\");\nconst dataIt = (() => {\n  const m = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(d.data);\n  if (!m) return d.data;\n  const mesi = [\"gennaio\",\"febbraio\",\"marzo\",\"aprile\",\"maggio\",\"giugno\",\"luglio\",\"agosto\",\"settembre\",\"ottobre\",\"novembre\",\"dicembre\"];\n  return `${Number(m[3])} ${mesi[Number(m[2]) - 1]} ${m[1]}`;\n})();\nconst riga = (k, v) => `<tr><td style=\"padding:10px 0;border-bottom:1px solid #eee7e2;color:#6b6466;width:150px;vertical-align:top;\">${k}</td><td style=\"padding:10px 0;border-bottom:1px solid #eee7e2;font-weight:bold;vertical-align:top;\">${v}</td></tr>`;\nconst linkRevoca = `${txt(IN.urlRevoca)}?codice=${encodeURIComponent(d.codice)}&token=${token}`;\nconst emailHtml = `<!DOCTYPE html>\n<html lang=\"it\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Delega registrata</title></head>\n<body style=\"margin:0;padding:0;background:#f4f1ee;\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f4f1ee;padding:24px 0;font-family:Arial,Helvetica,sans-serif;\">\n<tr><td align=\"center\" style=\"padding:0 12px;\">\n<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6dfd9;\">\n<tr><td style=\"background:#8B1538;padding:20px 30px;\">\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr>\n<td width=\"64\" valign=\"middle\" style=\"width:64px;\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr>\n<td width=\"56\" height=\"56\" align=\"center\" valign=\"middle\" style=\"width:56px;height:56px;background:#ffffff;border-radius:12px;\">\n<img src=\"https://studio-cai-messenger.vercel.app/logo.jpg\" width=\"48\" height=\"48\" alt=\"Studio CAI\" style=\"display:block;width:48px;height:48px;border:0;border-radius:8px;\">\n</td></tr></table></td>\n<td valign=\"middle\" style=\"padding-left:14px;\">\n<p style=\"margin:0;font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:1.2;color:#ffffff;font-weight:bold;\">Studio CAI</p>\n<p style=\"margin:4px 0 0;font-size:13px;color:#f3d9e0;\">Delega per l'assemblea registrata</p>\n</td></tr></table>\n</td></tr>\n<tr><td style=\"padding:30px 30px 10px;\">\n<p style=\"margin:0 0 14px;font-size:16px;color:#1f1b1c;\">Gentile <strong>${esc(delegante)}</strong>,</p>\n<p style=\"margin:0;font-size:15px;line-height:1.6;color:#333333;\">le confermiamo che la sua delega per l'assemblea del condominio di <strong>${esc(condominio)}</strong> è stata registrata. In allegato trova la ricevuta in PDF${d.emailDelegato ? \", inviata in copia anche al delegato\" : \"\"}.</p>\n</td></tr>\n<tr><td style=\"padding:14px 30px 4px;\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f9f1f3;border:1px solid #ecd3da;border-left:4px solid #8B1538;border-radius:10px;\">\n<tr><td style=\"padding:14px 18px;\">\n<p style=\"margin:0;font-size:11px;letter-spacing:0.6px;color:#8B1538;font-weight:bold;\">CODICE DELEGA</p>\n<p style=\"margin:4px 0 0;font-family:'Courier New',Courier,monospace;font-size:21px;font-weight:bold;color:#6c1029;\">${esc(d.codice)}</p>\n</td></tr></table>\n</td></tr>\n<tr><td style=\"padding:20px 30px 6px;\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"font-size:14px;color:#1f1b1c;border-collapse:collapse;\">\n${riga(\"Assemblea\", esc(dataIt))}\n${riga(\"Unità\", esc(d.unita))}\n${riga(\"Delegante\", `${esc(delegante)}<br><span style=\"font-weight:normal;color:#6b6466;\">${esc(d.qualita)} · ${esc(d.cf)}</span>`)}\n${riga(\"Delegato\", esc(d.delegato))}\n${riga(\"Istruzioni di voto\", d.istruzioni ? esc(d.istruzioni).replace(/\\r?\\n/g, \"<br>\") : \"Nessuna\")}\n</table>\n</td></tr>\n<tr><td style=\"padding:20px 30px 4px;\">\n<p style=\"margin:0 0 8px;font-size:15px;font-weight:bold;color:#8B1538;\">Vuole annullarla?</p>\n<p style=\"margin:0 0 14px;font-size:14px;line-height:1.6;color:#333333;\">Può revocare la delega fino al giorno dell'assemblea. Per cambiare delegato basta compilare una nuova delega: sostituisce automaticamente questa.</p>\n<a href=\"${linkRevoca}\" style=\"display:inline-block;padding:11px 20px;border-radius:10px;border:1.5px solid #8B1538;color:#8B1538;font-weight:bold;font-size:14px;text-decoration:none;\">Revoca la delega</a>\n<p style=\"margin:16px 0 0;font-size:13px;line-height:1.6;color:#8a3a1b;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 12px;\"><strong>Non ha compilato lei questa delega?</strong> La revochi con il pulsante qui sopra e contatti subito lo studio.</p>\n</td></tr>\n<tr><td style=\"padding:22px 30px 28px;\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-top:1px solid #eee7e2;\">\n<tr><td style=\"padding-top:18px;font-size:14px;line-height:1.7;color:#333333;\">\nPer informazioni: <a href=\"mailto:info@studiocai.it\" style=\"color:#8B1538;font-weight:bold;text-decoration:none;\">info@studiocai.it</a> &nbsp;&middot;&nbsp; <a href=\"tel:+390678359769\" style=\"color:#8B1538;font-weight:bold;text-decoration:none;\">06 7835 9769</a>\n<br><br>Cordiali saluti,<br>\n<span style=\"font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#8B1538;font-weight:bold;\">Studio CAI</span>\n</td></tr></table>\n</td></tr>\n<tr><td style=\"background:#faf7f5;padding:13px 30px;border-top:1px solid #eee7e2;\">\n<p style=\"margin:0;font-size:11px;line-height:1.5;color:#8a8385;\">Email automatica, la preghiamo di non rispondere a questo messaggio. La riceve perché il suo indirizzo è stato verificato con il codice inviato durante la compilazione della delega.</p>\n</td></tr>\n</table></td></tr></table>\n</body></html>`;\n\nconst telegram = nomeCondominio ? \"\" :\n  `<b>🗳 Delega: condominio da verificare</b>\\nNon trovo nell'elenco il condominio scritto nella delega ${esc(d.codice)}:\\n• ${esc(d.condominio)}\\n\\nCorreggere il campo CONDOMINIO su Airtable (base DELEGHE ASSEMBLEE).`;\n\nreturn {\n  condominio, abbinato: !!nomeCondominio, verifica, motivo: motivi.join(\" + \") || \"email mai vista\",\n  avvisi: avvisi.join(\"\\n\"),\n  record: JSON.stringify(record),\n  sostituzione, nSostituite: daSostituire.length,\n  cartella, nomeFile, token, emailHtml,\n  oggetto: `Studio CAI – Delega registrata per l'assemblea del ${dataIt} [${d.codice}]`,\n  cc: d.emailDelegato && d.emailDelegato !== d.email ? d.emailDelegato : \"\",\n  telegram,\n  risposta: JSON.stringify({ ok: true, codice: d.codice, condominio }),\n};\n",
+        "input": [
+         {
+          "name": "elenco",
+          "value": "{{7.json}}"
+         },
+         {
+          "name": "segnalazioni",
+          "value": "{{8.json}}"
+         },
+         {
+          "name": "deleghe",
+          "value": "{{9.json}}"
+         },
+         {
+          "name": "codiceDelega",
+          "value": "{{1.codiceDelega}}"
+         },
+         {
+          "name": "condominio",
+          "value": "{{1.condominio}}"
+         },
+         {
+          "name": "dataAssemblea",
+          "value": "{{1.dataAssemblea}}"
+         },
+         {
+          "name": "unita",
+          "value": "{{1.unita}}"
+         },
+         {
+          "name": "nome",
+          "value": "{{1.nome}}"
+         },
+         {
+          "name": "cognome",
+          "value": "{{1.cognome}}"
+         },
+         {
+          "name": "cf",
+          "value": "{{1.cf}}"
+         },
+         {
+          "name": "qualita",
+          "value": "{{1.qualita}}"
+         },
+         {
+          "name": "email",
+          "value": "{{1.email}}"
+         },
+         {
+          "name": "delegato",
+          "value": "{{1.delegato}}"
+         },
+         {
+          "name": "emailDelegato",
+          "value": "{{1.emailDelegato}}"
+         },
+         {
+          "name": "istruzioni",
+          "value": "{{1.istruzioni}}"
+         },
+         {
+          "name": "ip",
+          "value": "{{ifempty(first(map(1.`__IMTHEADERS__`; \"value\"; \"name\"; \"x-forwarded-for\")); 1.ip)}}"
+         },
+         {
+          "name": "dispositivo",
+          "value": "{{1.dispositivo}}"
+         },
+         {
+          "name": "versione",
+          "value": "{{1.versione}}"
+         },
+         {
+          "name": "timestamp",
+          "value": "{{now}}"
+         },
+         {
+          "name": "urlRevoca",
+          "value": "https://hook.eu1.make.com/4bshn94r0p6npazhnwuqhk6adkdixqqq"
+         }
+        ]
+       }
+      },
+      {
+       "id": 11,
+       "module": "dropbox:uploadLargeFile",
+       "version": 5,
+       "parameters": {
+        "__IMTCONN__": 33166
+       },
+       "mapper": {
+        "path": "{{10.result.cartella}}",
+        "filename": "{{10.result.nomeFile}}",
+        "data": "{{1.pdf.data}}",
+        "overwrite": true
+       },
+       "metadata": {
+        "designer": {
+         "x": 3000,
+         "y": -200
+        }
+       }
+      },
+      {
+       "id": 12,
+       "module": "airtable:makeApiCall",
+       "version": 3,
+       "parameters": {
+        "__IMTCONN__": 5329588
+       },
+       "mapper": {
+        "url": "v0/app1UcdFfbIWT7f8T/tblNs0GJ94owfQpEa",
+        "method": "POST",
+        "headers": [
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         }
+        ],
+        "body": "{{10.result.record}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 3300,
+         "y": -200
+        }
+       }
+      },
+      {
+       "id": 13,
+       "module": "builtin:BasicRouter",
+       "version": 1,
+       "mapper": null,
+       "metadata": {
+        "designer": {
+         "x": 3600,
+         "y": -200
+        }
+       },
+       "routes": [
+        {
+         "flow": [
+          {
+           "id": 14,
+           "module": "airtable:makeApiCall",
+           "version": 3,
+           "parameters": {
+            "__IMTCONN__": 5329588
+           },
+           "filter": {
+            "name": "Delega da sostituire",
+            "conditions": [
+             [
+              {
+               "a": "{{10.result.nSostituite}}",
+               "o": "number:greater",
+               "b": "0"
+              }
+             ]
+            ]
+           },
+           "mapper": {
+            "url": "v0/app1UcdFfbIWT7f8T/tblNs0GJ94owfQpEa",
+            "method": "PATCH",
+            "headers": [
+             {
+              "key": "Content-Type",
+              "value": "application/json"
+             }
+            ],
+            "body": "{{10.result.sostituzione}}"
+           },
+           "metadata": {
+            "designer": {
+             "x": 3900,
+             "y": -500
+            }
+           }
+          }
+         ]
+        },
+        {
+         "flow": [
+          {
+           "id": 15,
+           "module": "telegram:SendReplyMessage",
+           "version": 1,
+           "parameters": {
+            "__IMTCONN__": 816387
+           },
+           "filter": {
+            "name": "Condominio non abbinato",
+            "conditions": [
+             [
+              {
+               "a": "{{length(10.result.telegram)}}",
+               "o": "number:greater",
+               "b": "0"
+              }
+             ]
+            ]
+           },
+           "mapper": {
+            "text": "{{10.result.telegram}}",
+            "chatId": "228768252",
+            "parseMode": "HTML",
+            "replyMarkup": "",
+            "messageThreadId": "",
+            "replyToMessageId": "",
+            "replyMarkupAssembleType": "reply_markup_enter"
+           },
+           "metadata": {
+            "designer": {
+             "x": 3900,
+             "y": -250
+            }
+           }
+          }
+         ]
+        },
+        {
+         "flow": [
+          {
+           "id": 16,
+           "module": "google-email:ActionSendEmail",
+           "version": 2,
+           "parameters": {
+            "account": 50787
+           },
+           "mapper": {
+            "to": [
+             "{{lower(trim(1.email))}}"
+            ],
+            "cc": "{{if(10.result.cc = \"\"; emptyarray; split(10.result.cc; \",\"))}}",
+            "bcc": [
+             "studiocai.gestioneimmobili+deleghe@gmail.com"
+            ],
+            "from": "",
+            "subject": "{{10.result.oggetto}}",
+            "html": "{{10.result.emailHtml}}",
+            "attachments": [
+             {
+              "fileName": "{{10.result.nomeFile}}",
+              "data": "{{1.pdf.data}}"
+             }
+            ]
+           },
+           "metadata": {
+            "designer": {
+             "x": 3900,
+             "y": 0
+            }
+           }
+          },
+          {
+           "id": 17,
+           "module": "datastore:DeleteRecord",
+           "version": 1,
+           "parameters": {
+            "datastore": 195160
+           },
+           "mapper": {
+            "key": "{{1.requestId}}"
+           },
+           "metadata": {
+            "designer": {
+             "x": 4200,
+             "y": 0
+            }
+           }
+          },
+          {
+           "id": 18,
+           "module": "gateway:WebhookRespond",
+           "version": 1,
+           "parameters": {},
+           "mapper": {
+            "status": "200",
+            "body": "{{10.result.risposta}}",
+            "headers": [
+             {
+              "key": "Content-Type",
+              "value": "application/json"
+             },
+             {
+              "key": "Access-Control-Allow-Origin",
+              "value": "*"
+             }
+            ]
+           },
+           "metadata": {
+            "designer": {
+             "x": 4500,
+             "y": 0
+            }
+           }
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 19,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "filter": {
+        "name": "Codice non valido",
+        "conditions": [
+         [
+          {
+           "a": "{{2.codice}}",
+           "o": "notexist"
+          }
+         ],
+         [
+          {
+           "a": "{{2.codice}}",
+           "o": "text:notequal",
+           "b": "{{trim(1.codice)}}"
+          }
+         ],
+         [
+          {
+           "a": "{{2.email}}",
+           "o": "text:notequal",
+           "b": "{{lower(trim(1.email))}}"
+          }
+         ],
+         [
+          {
+           "a": "{{2.scadenza}}",
+           "o": "number:lessorequal",
+           "b": "{{timestamp}}"
+          }
+         ],
+         [
+          {
+           "a": "{{ifempty(2.tentativi; 0)}}",
+           "o": "number:greaterorequal",
+           "b": "5"
+          }
+         ]
+        ]
+       },
+       "mapper": {
+        "status": "200",
+        "body": "{\"ok\":false,\"errore\":\"{{if(ifempty(2.codice; \"\") = \"\"; \"scaduto\"; if(ifempty(2.tentativi; 0) >= 5; \"troppi\"; if(2.scadenza <= timestamp; \"scaduto\"; \"errato\")))}}\"}",
+        "headers": [
+         {
+          "key": "Content-Type",
+          "value": "application/json"
+         },
+         {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 900,
+         "y": 250
+        }
+       }
+      },
+      {
+       "id": 20,
+       "module": "datastore:UpdateRecord",
+       "version": 1,
+       "parameters": {
+        "datastore": 195160
+       },
+       "filter": {
+        "name": "Codice esistente",
+        "conditions": [
+         [
+          {
+           "a": "{{2.codice}}",
+           "o": "exist"
+          }
+         ]
+        ]
+       },
+       "mapper": {
+        "key": "{{1.requestId}}",
+        "data": {
+         "tentativi": "{{ifempty(2.tentativi; 0) + 1}}"
+        },
+        "insert": false
+       },
+       "metadata": {
+        "designer": {
+         "x": 1200,
+         "y": 250
+        }
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "metadata": {
+  "instant": true,
+  "version": 1,
+  "scenario": {
+   "dlq": false,
+   "dataloss": false,
+   "maxErrors": 3,
+   "autoCommit": true,
+   "roundtrips": 1,
+   "sequential": false,
+   "confidential": false,
+   "freshVariables": false,
+   "autoCommitTriggerLast": true
+  }
+ }
+}
