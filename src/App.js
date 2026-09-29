@@ -11,7 +11,7 @@ import { creaPdfDelega } from "./pdf";
 // ─────────────────────────────────────────────────────────────
 // Build constants (v1.1)
 // ─────────────────────────────────────────────────────────────
-const APP_VERSION = "1.1.1";
+const APP_VERSION = "1.2";
 const BUILD_DATE_LABEL = "29/09/2026";
 const BRAND = "Studio CAI";
 const PRIMARY = "#8B1538";
@@ -128,13 +128,17 @@ const VUOTO = {
 // ─────────────────────────────────────────────────────────────
 export default function App() {
   const [form, setForm] = useState(() => {
-    // Il QR può precompilare condominio e data: ?c=Via+Roma+23&d=2026-10-15
+    // Il QR e l'assistente virtuale possono precompilare condominio, data, unità ed email:
+    // ?c=Via+Roma+23&d=2026-10-15&u=A/12&e=nome@esempio.it (l'email resta comunque da verificare con il codice)
     const p = new URLSearchParams(window.location.search);
     const d = p.get("d") || "";
+    const e = sanitizers.email(p.get("e") || "").toLowerCase();
     return {
       ...VUOTO,
       condominio: sanitizers.condominio(p.get("c") || ""),
       dataAssemblea: /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= oggiISO() ? d : "",
+      unita: sanitizers.unita(p.get("u") || "").slice(0, 40),
+      email: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : "",
     };
   });
   const [touched, setTouched] = useState({});

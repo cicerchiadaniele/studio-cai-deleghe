@@ -1,3 +1,7 @@
+# Changelog v1.2 – 29/09/2026
+
+- Collegamento dall'assistente virtuale: il link può precompilare anche unità (`u`) ed email (`e`) oltre a condominio (`c`) e data dell'assemblea (`d`). L'email va comunque verificata con il codice.
+
 # Changelog v1.1.1 – 29/09/2026
 
 - Codice di verifica: la prima casella accetta il codice intero suggerito dalla tastiera di iPhone ("Da Mail") e lo distribuisce sulle sei caselle; etichette di accessibilità sulle caselle.
