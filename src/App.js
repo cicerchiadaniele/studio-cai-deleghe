@@ -6,12 +6,13 @@ import {
   FileCheck2, AlertCircle, CheckCircle2, ChevronDown, Loader2, RotateCcw, ArrowLeft, Info, X,
   AlertTriangle,
 } from "lucide-react";
+import { ServiziStudio } from "./ServiziStudio";
 import { creaPdfDelega } from "./pdf";
 
 // ─────────────────────────────────────────────────────────────
 // Build constants (v1.1)
 // ─────────────────────────────────────────────────────────────
-const APP_VERSION = "1.2";
+const APP_VERSION = "1.3";
 const BUILD_DATE_LABEL = "29/09/2026";
 const BRAND = "Studio CAI";
 const PRIMARY = "#8B1538";
@@ -569,6 +570,8 @@ export default function App() {
           )}
         </motion.div>
       </main>
+
+      <ServiziStudio />
 
       <footer className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-8">
         <div className="bg-white/70 backdrop-blur rounded-2xl ring-1 ring-neutral-200 p-4 sm:p-5">

@@ -1,13 +1,6 @@
-# Changelog v1.2 – 29/09/2026
+# Changelog v1.3 – 29/09/2026
 
-- Collegamento dall'assistente virtuale: il link può precompilare anche unità (`u`) ed email (`e`) oltre a condominio (`c`) e data dell'assemblea (`d`). L'email va comunque verificata con il codice.
-
-# Changelog v1.1.1 – 29/09/2026
-
-- Codice di verifica: la prima casella accetta il codice intero suggerito dalla tastiera di iPhone ("Da Mail") e lo distribuisce sulle sei caselle; etichette di accessibilità sulle caselle.
-- Email con il codice (scenario Make 7552078) allineata al chatbot: mittente info@studiocai.it, Verdana, banda bordeaux, cifre in sei caselle, ora di scadenza, oggetto con il codice in testa.
-
-# Changelog – Deleghe assemblea
+- Fascia "Ti serve altro?" in fondo alla pagina (`src/ServiziStudio.js`, identico in Segnalazioni, Deleghe, Anagrafe e Detrazioni): pulsanti Tutti i servizi (https://studio-cai-portali.vercel.app/), Assistente virtuale (https://studio-cai-chatbot.vercel.app/) e Numeri utili (pagina del portale), con telefono ed email dello studio chiamabili con un tocco.
 
 ## v1.1 – 23/09/2026
 
@@ -29,3 +22,14 @@ Prima versione.
 - Blocco della delega all'amministratore e al delegante stesso.
 - Tre scenari Make: invio codice, conferma e registrazione, revoca con pagina di conferma.
 - Base Airtable DELEGHE ASSEMBLEE con stato (valida, sostituita, revocata), verifica del recapito e avvisi automatici.
+
+# Changelog v1.2 – 29/09/2026
+
+- Collegamento dall'assistente virtuale: il link può precompilare anche unità (`u`) ed email (`e`) oltre a condominio (`c`) e data dell'assemblea (`d`). L'email va comunque verificata con il codice.
+
+# Changelog v1.1.1 – 29/09/2026
+
+- Codice di verifica: la prima casella accetta il codice intero suggerito dalla tastiera di iPhone ("Da Mail") e lo distribuisce sulle sei caselle; etichette di accessibilità sulle caselle.
+- Email con il codice (scenario Make 7552078) allineata al chatbot: mittente info@studiocai.it, Verdana, banda bordeaux, cifre in sei caselle, ora di scadenza, oggetto con il codice in testa.
+
+# Changelog – Deleghe assemblea
