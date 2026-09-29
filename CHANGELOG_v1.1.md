@@ -1,3 +1,8 @@
+# Changelog v1.1.1 – 29/09/2026
+
+- Codice di verifica: la prima casella accetta il codice intero suggerito dalla tastiera di iPhone ("Da Mail") e lo distribuisce sulle sei caselle; etichette di accessibilità sulle caselle.
+- Email con il codice (scenario Make 7552078) allineata al chatbot: mittente info@studiocai.it, Verdana, banda bordeaux, cifre in sei caselle, ora di scadenza, oggetto con il codice in testa.
+
 # Changelog – Deleghe assemblea
 
 ## v1.1 – 23/09/2026

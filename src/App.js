@@ -11,8 +11,8 @@ import { creaPdfDelega } from "./pdf";
 // ─────────────────────────────────────────────────────────────
 // Build constants (v1.1)
 // ─────────────────────────────────────────────────────────────
-const APP_VERSION = "1.1";
-const BUILD_DATE_LABEL = "23/09/2026";
+const APP_VERSION = "1.1.1";
+const BUILD_DATE_LABEL = "29/09/2026";
 const BRAND = "Studio CAI";
 const PRIMARY = "#8B1538";
 const LOGO_URL = "/logo.jpg";
@@ -716,7 +716,7 @@ function CampoOtp({ valore, onChange, disabled }) {
     <div className="flex gap-2 justify-center my-6">
       {valore.map((c, i) => (
         <input key={i} ref={(el) => (refs.current[i] = el)} value={c} disabled={disabled}
-          inputMode="numeric" autoComplete={i === 0 ? "one-time-code" : "off"} maxLength={1} onPaste={incolla}
+          inputMode="numeric" pattern="[0-9]*" autoComplete={i === 0 ? "one-time-code" : "off"} maxLength={i === 0 ? 6 : 1} onPaste={incolla} aria-label={"Cifra " + (i + 1)}
           onChange={(e) => {
             const v = e.target.value.replace(/\D/g, "");
             if (v.length > 1) { incolla({ clipboardData: { getData: () => v }, preventDefault: () => {} }); return; }
