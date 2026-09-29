@@ -12,7 +12,7 @@ const EMAIL = "info@studiocai.it";
 
 const LINK = [
   { href: PORTALE, titolo: "Tutti i servizi", sotto: "Portale servizi dello studio", Icona: LayoutGrid },
-  { href: ASSISTENTE, titolo: "Assistente virtuale", sotto: "Chiedi qualsiasi cosa sul condominio", Icona: Bot },
+  { href: ASSISTENTE, titolo: "Claudio", sotto: "L'assistente virtuale dello Studio CAI", Icona: Bot },
   { href: NUMERI, titolo: "Numeri utili", sotto: "Emergenze, acqua, luce e gas", Icona: PhoneCall },
 ];
 

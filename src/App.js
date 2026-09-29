@@ -12,7 +12,7 @@ import { creaPdfDelega } from "./pdf";
 // ─────────────────────────────────────────────────────────────
 // Build constants (v1.1)
 // ─────────────────────────────────────────────────────────────
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.3.1";
 const BUILD_DATE_LABEL = "29/09/2026";
 const BRAND = "Studio CAI";
 const PRIMARY = "#8B1538";
